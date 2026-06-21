@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4f60ee">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>✦ yuki's planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --b1:#e8f0fe;--b2:#c5d8fd;--b4:#5c8ef5;
+  --lav:#ede8fe;
+  --td:#1a2a5e;--ts:#6b82c4;
+  --r:20px;--rsm:14px;
+}
+html{background:#e8f0fe;overscroll-behavior-y:none}
+body{font-family:'Quicksand',sans-serif;background:linear-gradient(180deg,#e8f0fe 0%,#f0ebff 50%,#e8f0fe 100%);min-height:100vh;min-height:100dvh;color:var(--td);-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+.app{max-width:430px;margin:0 auto;padding:0 0 calc(110px + env(safe-area-inset-bottom));min-height:100vh;min-height:100dvh}
+button,a,select{touch-action:manipulation}
+
+/* ── Header ── */
+.header{background:linear-gradient(160deg,#3a5bf0 0%,#7c4de8 60%,#a06ef5 100%);padding:0;position:relative;overflow:hidden;min-height:200px}
+.s{position:absolute;background:white;border-radius:50%}
+.header-content{position:relative;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;padding:18px 18px 22px}
+.header-text{flex:1}
+.header-text h1{font-family:'Pacifico',cursive;font-size:21px;color:white;line-height:1.2;text-shadow:0 2px 12px rgba(40,20,120,0.3)}
+.header-text p{font-size:11px;color:rgba(255,255,255,0.75);margin-top:5px;font-weight:700;letter-spacing:0.05em}
+.notif-hint{font-size:10px;color:rgba(255,255,255,0.6);margin-top:3px;font-weight:600}
+.petal{position:absolute;pointer-events:none;opacity:0.2;color:white;z-index:2}
+.girl-wrap{flex-shrink:0;margin-left:8px;margin-bottom:-22px;position:relative;z-index:4}
+.girl-wrap>img{width:148px;height:210px;object-fit:cover;object-position:center;border-radius:74px 74px 0 0;display:block}
+.girl-wrap>svg{display:none}
+
+/* ── Today strip ── */
+.today-strip{background:white;margin:14px 14px 0;border-radius:var(--r);padding:13px 16px;border:1.5px solid var(--b2);display:flex;align-items:center;gap:12px}
+.today-icon{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#e8f0fe,#ede8fe);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.today-label{font-size:10px;color:var(--ts);font-weight:700;letter-spacing:0.07em;text-transform:uppercase}
+.today-val{font-size:14px;font-weight:700;color:var(--td);margin-top:2px}
+
+/* ── Section ── */
+.section{padding:18px 14px 0}
+.sec-title{font-size:10px;font-weight:700;color:var(--ts);letter-spacing:0.09em;text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.sec-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--b2),transparent)}
+
+/* ── Task card ── */
+.task-card{background:white;border-radius:var(--r);margin-bottom:10px;border:1.5px solid var(--b2);position:relative;transition:transform 0.15s;overflow:hidden;display:flex;min-height:100px}
+.task-card.today-card{border-color:var(--b4);background:linear-gradient(135deg,#f5f8ff 0%,#faf7ff 100%)}
+.task-card:active{transform:scale(0.985)}
+
+/* Photo strip on left */
+.task-photo{width:90px;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(160deg,#c5d8fd,#ede8fe)}
+.task-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.task-photo .photo-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px}
+.photo-num-badge{position:absolute;top:6px;left:6px;background:rgba(255,255,255,0.85);border-radius:20px;font-size:10px;font-weight:700;color:#3a2896;padding:2px 7px;backdrop-filter:blur(4px)}
+
+/* Task content right */
+.task-body{flex:1;padding:13px 13px 11px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.task-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.task-name{font-size:14px;font-weight:700;color:var(--td);line-height:1.3}
+.task-time-badge{font-size:11px;font-weight:700;color:#1a3fa8;background:var(--b1);padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:1px solid var(--b2)}
+.task-days{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.day-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--lav);color:#3a2896}
+.task-meta{font-size:10px;color:var(--ts);margin-top:6px;font-weight:600}
+.task-actions{display:flex;gap:6px;margin-top:9px}
+.btn-sm{font-family:'Quicksand',sans-serif;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;border:none;cursor:pointer;transition:opacity 0.15s}
+.btn-edit{background:var(--b1);color:#1a3fa8}
+.btn-done{background:#e3f7ed;color:#18794e}
+.btn-delete{background:#ede8fe;color:#3a2896}
+.btn-sm:hover{opacity:0.75}
+.task-card.completed{opacity:0.68}
+.task-card.completed .task-name{text-decoration:line-through}
+.page-link{display:block;margin:14px 14px 0;padding:12px 16px;text-align:center;border-radius:var(--r);background:white;border:1.5px solid var(--b2);color:#3a2896;text-decoration:none;font-size:13px;font-weight:700}
+.progress-page{display:none}
+.progress-card{background:white;border-radius:var(--r);border:1.5px solid var(--b2);padding:13px 15px;margin-bottom:9px}
+.progress-name{font-size:14px;font-weight:700}
+.progress-meta{font-size:11px;color:var(--ts);margin-top:4px;font-weight:600}
+.progress-empty{font-size:13px;color:var(--ts);padding:12px 2px;font-weight:600}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:40px 24px;color:var(--ts)}
+.empty-icon{font-size:44px;margin-bottom:14px}
+.empty p{font-size:14px;line-height:1.7;font-weight:600}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:26px;right:50%;transform:translateX(50%);background:linear-gradient(135deg,#5c8ef5,#7c4de8);color:white;border:none;border-radius:30px;padding:14px 30px;font-family:'Quicksand',sans-serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 6px 22px rgba(90,60,220,0.38);display:flex;align-items:center;gap:8px;transition:transform 0.15s;z-index:50}
+.fab:active{transform:translateX(50%) scale(0.96)}
+
+/* ── Modal ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(20,15,80,0.25);z-index:100;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#f5f7ff;border-radius:28px 28px 0 0;padding:22px 18px 44px;width:100%;max-width:430px;max-height:92vh;overflow-y:auto}
+.modal-handle{width:38px;height:4px;background:var(--b2);border-radius:4px;margin:0 auto 18px}
+.modal-title{font-family:'Pacifico',cursive;font-size:18px;color:var(--td);margin-bottom:20px;text-align:center}
+.field{margin-bottom:15px}
+label{display:block;font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px}
+input[type=text],input[type=time]{width:100%;padding:12px 14px;border-radius:var(--rsm);border:1.5px solid var(--b2);background:white;font-family:'Quicksand',sans-serif;font-size:15px;font-weight:600;color:var(--td);outline:none;transition:border-color 0.2s}
+input:focus{border-color:var(--b4)}
+.days-grid{display:flex;flex-wrap:wrap;gap:7px}
+.day-toggle{flex:1;min-width:38px;padding:9px 2px;border-radius:var(--rsm);border:1.5px solid var(--b2);background:white;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:700;color:var(--ts);cursor:pointer;text-align:center;transition:all 0.15s}
+.day-toggle.active{background:linear-gradient(135deg,#5c8ef5,#7c4de8);color:white;border-color:#5c8ef5}
+.notif-row{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:var(--rsm);padding:12px 14px;border:1.5px solid var(--b2)}
+.notif-label{font-size:14px;font-weight:700;color:var(--td)}
+.notif-sub{font-size:11px;color:var(--ts);margin-top:2px;font-weight:600}
+select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:var(--td);border:none;background:none;outline:none;cursor:pointer;-webkit-appearance:none}
+.btn-save{width:100%;padding:15px;border-radius:var(--r);border:none;background:linear-gradient(135deg,#5c8ef5,#7c4de8);color:white;font-family:'Quicksand',sans-serif;font-size:16px;font-weight:700;cursor:pointer;margin-top:20px;box-shadow:0 4px 16px rgba(90,60,220,0.28)}
+.btn-cancel{width:100%;padding:13px;border-radius:var(--r);border:1.5px solid var(--b2);background:white;color:var(--ts);font-family:'Quicksand',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px}
+.notif-status{font-size:12px;text-align:center;padding:8px;border-radius:var(--rsm);margin-top:12px;display:none;font-weight:700}
+.notif-status.show{display:block}
+.notif-status.ok{background:#e0f0ff;color:#1a3fa8}
+.notif-status.warn{background:var(--lav);color:#3a2896}
+
+/* ── Photo edit info box ── */
+.info-box{background:white;border:1.5px dashed var(--b2);border-radius:var(--rsm);padding:12px 14px;margin:14px 14px 0;font-size:12px;color:var(--ts);line-height:1.7;font-weight:600}
+.info-box strong{color:var(--td);font-weight:700}
+
+/* Mobile app layout */
+@media (max-width:480px){
+  .app{width:100%;max-width:none}
+  .header{min-height:184px;padding-top:env(safe-area-inset-top)}
+  .header-content{padding:16px 16px 20px;min-height:184px}
+  .header-text h1{font-size:20px}
+  .girl-wrap{margin-left:4px;margin-bottom:-20px}
+  .girl-wrap>img{width:126px;height:178px;border-radius:63px 63px 0 0}
+  .today-strip,.page-link{margin-left:12px;margin-right:12px}
+  .section{padding-left:12px;padding-right:12px}
+  .task-photo{width:82px}
+  .task-body{padding:12px 10px 10px}
+  .task-actions{flex-wrap:wrap}
+  .btn-sm{min-height:36px;flex:1;padding:7px 8px}
+  input[type=text],input[type=time],select{font-size:16px}
+  .day-toggle{min-width:42px;min-height:44px}
+  .fab{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));transform:none;width:calc(100% - 24px);justify-content:center;min-height:54px;border-radius:18px}
+  .fab:active{transform:scale(0.98)}
+  .overlay{align-items:flex-end}
+  .modal{max-width:none;max-height:calc(100dvh - env(safe-area-inset-top));padding:18px 16px calc(22px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0}
+  .btn-save,.btn-cancel{min-height:52px}
+  .progress-page .header{min-height:145px!important}
+  .progress-page .header-content{min-height:145px}
+}
+
+@media (max-width:360px){
+  .header-text h1{font-size:18px}
+  .header-text p{font-size:10px}
+  .girl-wrap>img{width:108px;height:158px}
+  .task-photo{width:72px}
+  .task-name{font-size:13px}
+  .task-time-badge{font-size:10px;padding:2px 7px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="s" style="width:2px;height:2px;top:12%;left:8%;opacity:0.5"></div>
+    <div class="s" style="width:3px;height:3px;top:20%;left:18%;opacity:0.35"></div>
+    <div class="s" style="width:2px;height:2px;top:8%;left:35%;opacity:0.4"></div>
+    <div class="s" style="width:4px;height:4px;top:30%;left:5%;opacity:0.25"></div>
+    <div class="s" style="width:3px;height:3px;top:55%;left:12%;opacity:0.4"></div>
+    <div class="s" style="width:2px;height:2px;top:15%;left:52%;opacity:0.4"></div>
+    <div class="petal" style="top:14px;left:14px;font-size:18px">✦</div>
+    <div class="petal" style="top:38px;left:28px;font-size:10px">✧</div>
+    <div class="petal" style="top:22px;left:48px;font-size:13px">✦</div>
+    <div class="petal" style="top:55px;left:10px;font-size:10px">⋆</div>
+    <div class="petal" style="top:70px;left:42px;font-size:8px">✦</div>
+
+    <div class="header-content">
+      <div class="header-text">
+        <h1>yuki's planner ✦</h1>
+        <p id="date-line">loading...</p>
+        <p class="notif-hint">🔔 keep app open for reminders</p>
+      </div>
+      <div class="girl-wrap">
+        <img src="https://i.pinimg.com/736x/32/c9/5e/32c95e425cb0fe16c90e0874bd01319c.jpg" alt="planner image">
+        <svg width="148" height="210" viewBox="0 0 148 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="74" cy="72" rx="40" ry="44" fill="#1a0a4a"/>
+          <path d="M34 75 Q18 110 20 150 Q26 160 30 150 Q32 128 36 108 Q40 88 38 75Z" fill="#22086a"/>
+          <path d="M114 75 Q130 110 128 150 Q122 160 118 150 Q116 128 112 108 Q108 88 110 75Z" fill="#22086a"/>
+          <path d="M20 150 Q16 168 22 174 Q28 168 30 150Z" fill="#1a0a4a"/>
+          <path d="M128 150 Q132 168 126 174 Q120 168 118 150Z" fill="#1a0a4a"/>
+          <path d="M52 38 Q56 32 62 35 Q58 42 54 46Z" fill="#5040c0" opacity="0.5"/>
+          <path d="M82 36 Q88 31 92 35 Q88 43 84 46Z" fill="#5040c0" opacity="0.4"/>
+          <rect x="64" y="102" width="20" height="18" rx="5" fill="#fdd5c5"/>
+          <path d="M30 148 Q44 120 64 118 L74 116 L84 118 Q104 120 118 148 Q118 165 74 165 Q30 165 30 148Z" fill="#4a7fff"/>
+          <ellipse cx="74" cy="80" rx="30" ry="32" fill="#fde8d8"/>
+          <path d="M44 68 Q46 44 74 38 Q102 44 104 68 Q96 56 86 58 Q80 52 74 52 Q68 52 62 58 Q52 56 44 68Z" fill="#280d7a"/>
+          <path d="M44 68 Q38 78 36 90 Q40 85 46 80 Q46 74 44 68Z" fill="#1e0860"/>
+          <path d="M104 68 Q110 78 112 90 Q108 85 102 80 Q102 74 104 68Z" fill="#1e0860"/>
+          <path d="M70 52 Q68 62 66 72 Q70 68 74 70 Q78 68 82 72 Q80 62 78 52 Q76 48 74 48 Q72 48 70 52Z" fill="#2a0e80"/>
+          <ellipse cx="60" cy="78" rx="10" ry="11" fill="white"/>
+          <ellipse cx="88" cy="78" rx="10" ry="11" fill="white"/>
+          <ellipse cx="60" cy="79" rx="8" ry="9" fill="#3060e0"/>
+          <ellipse cx="88" cy="79" rx="8" ry="9" fill="#3060e0"/>
+          <ellipse cx="60" cy="80" rx="6" ry="7" fill="#1a3ab0"/>
+          <ellipse cx="88" cy="80" rx="6" ry="7" fill="#1a3ab0"/>
+          <ellipse cx="60" cy="80" rx="3.5" ry="4" fill="#080820"/>
+          <ellipse cx="88" cy="80" rx="3.5" ry="4" fill="#080820"/>
+          <ellipse cx="63" cy="75" rx="3" ry="3.5" fill="white" opacity="0.95"/>
+          <ellipse cx="91" cy="75" rx="3" ry="3.5" fill="white" opacity="0.95"/>
+          <circle cx="57" cy="82" r="1.5" fill="white" opacity="0.7"/>
+          <circle cx="85" cy="82" r="1.5" fill="white" opacity="0.7"/>
+          <path d="M50 72 Q60 68 70 72" stroke="#180850" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M78 72 Q88 68 98 72" stroke="#180850" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M50 72 Q47 68 49 66" stroke="#180850" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M54 70 Q52 66 54 64" stroke="#180850" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M63 69 Q63 65 66 65" stroke="#180850" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M70 73 Q73 70 75 72" stroke="#180850" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M78 73 Q75 70 77 68" stroke="#180850" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M84 69 Q83 65 86 64" stroke="#180850" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M98 72 Q101 69 103 71" stroke="#180850" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M49 64 Q60 59 70 63" stroke="#1a0860" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <path d="M78 63 Q88 59 99 64" stroke="#1a0860" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="50" cy="88" rx="9" ry="5" fill="#ffb3cc" opacity="0.45"/>
+          <ellipse cx="98" cy="88" rx="9" ry="5" fill="#ffb3cc" opacity="0.45"/>
+          <path d="M71 92 Q74 95 77 92" stroke="#e8a090" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M65 100 Q74 107 83 100" stroke="#e06878" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path d="M68 100 Q74 104 80 100" fill="#f0a0b0" opacity="0.5"/>
+          <path d="M64 118 Q74 112 84 118 L82 130 L74 126 L66 130Z" fill="white"/>
+          <path d="M30 148 Q38 122 62 120 L66 130 L74 134 L82 130 L86 120 Q110 122 118 148 Q118 165 74 165 Q30 165 30 148Z" fill="#4a7fff"/>
+          <path d="M68 122 Q74 126 80 122 Q78 118 74 120 Q70 118 68 122Z" fill="#ff6090"/>
+          <path d="M64 120 Q68 122 66 126 Q62 124 64 120Z" fill="#ff4070"/>
+          <path d="M84 120 Q80 122 82 126 Q86 124 84 120Z" fill="#ff4070"/>
+          <circle cx="74" cy="140" r="2" fill="white" opacity="0.7"/>
+          <circle cx="74" cy="152" r="2" fill="white" opacity="0.7"/>
+          <path d="M42 60 L44 54 L46 60 L52 60 L47 64 L49 70 L44 66 L39 70 L41 64 L36 60Z" fill="#ffe040" opacity="0.9"/>
+          <path d="M100 55 L101.5 51 L103 55 L107 55 L104 57.5 L105 61 L101.5 58.5 L98 61 L99 57.5 L96 55Z" fill="#ff90c0" opacity="0.9"/>
+          <path d="M12 55 L13.5 50 L15 55 L20 55 L16 58 L17.5 63 L13.5 60 L9.5 63 L11 58 L7 55Z" fill="white" opacity="0.55"/>
+          <path d="M130 35 L131 32 L132 35 L135 35 L132.5 37 L133.5 40 L131 38 L128.5 40 L129.5 37 L127 35Z" fill="white" opacity="0.5"/>
+          <circle cx="8" cy="85" r="2" fill="white" opacity="0.4"/>
+          <circle cx="140" cy="55" r="1.5" fill="white" opacity="0.5"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today strip -->
+  <div class="today-strip">
+    <div class="today-icon">🌙</div>
+    <div>
+      <div class="today-label">today</div>
+      <div class="today-val" id="today-count">loading...</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">all reminders</div>
+    <div id="task-list"></div>
+  </div>
+  <a class="page-link" href="#progress">✓ check task progress</a>
+</div>
+
+<div class="app progress-page" id="progress-page">
+  <div class="header" style="min-height:145px">
+    <div class="header-content" style="align-items:center;padding-top:42px">
+      <div class="header-text"><h1>task progress ✦</h1><p>done and still to do</p></div>
+    </div>
+  </div>
+  <a class="page-link" href="#">← back to planner</a>
+  <div class="section"><div class="sec-title">meant to do</div><div id="pending-list"></div></div>
+  <div class="section"><div class="sec-title">completed</div><div id="done-list"></div></div>
+</div>
+
+<button class="fab" onclick="openModal()">✦ add reminder</button>
+
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">new reminder ✦</div>
+    <div class="field">
+      <label>task name</label>
+      <input type="text" id="task-name" placeholder="e.g. Class, Gym, Study…">
+    </div>
+    <div class="field">
+      <label>time</label>
+      <input type="time" id="task-time" value="09:00">
+    </div>
+    <div class="field">
+      <label>repeat on days</label>
+      <div class="days-grid">
+        <button class="day-toggle" data-day="Sun">Sun</button>
+        <button class="day-toggle" data-day="Mon">Mon</button>
+        <button class="day-toggle" data-day="Tue">Tue</button>
+        <button class="day-toggle" data-day="Wed">Wed</button>
+        <button class="day-toggle" data-day="Thu">Thu</button>
+        <button class="day-toggle" data-day="Fri">Fri</button>
+        <button class="day-toggle" data-day="Sat">Sat</button>
+        <button class="day-toggle" data-day="Once">Once</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="notif-row">
+        <div>
+          <div class="notif-label">🔔 remind me</div>
+          <div class="notif-sub">before task starts</div>
+        </div>
+        <select id="notif-mins">
+          <option value="5">5 min</option>
+          <option value="10">10 min</option>
+          <option value="15" selected>15 min</option>
+          <option value="30">30 min</option>
+        </select>
+      </div>
+    </div>
+    <div class="notif-status" id="notif-status"></div>
+    <button class="btn-save" onclick="saveTask()">save reminder ✦</button>
+    <button class="btn-cancel" onclick="closeModal()">cancel</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  ✦ YOUR 10 PHOTOS — edit these URLs/paths ✦
+//  Use image URLs from the internet, OR
+//  local paths like: "photos/myphoto1.jpg"
+//  (put the images in same folder as this file)
+// ═══════════════════════════════════════════════
+const PHOTOS = [
+  "https://tse4.mm.bing.net/th/id/OIP.ASUHHaIBxnoLBXTF2bl5xgHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 1  ← paste your URL here
+  "https://tse3.mm.bing.net/th/id/OIP.lPWW2hNHR5BaK5iSAzZcHQHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 2
+  "https://img.ws.mms.shopee.com.my/b23d24f3e4886f1139cb163e3cc57500",  // photo 3
+  "https://tse1.explicit.bing.net/th/id/OIP.L51NRvOkqfV023_XPRxYmQAAAA?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 4
+  "https://tse2.mm.bing.net/th/id/OIP.hdjZVAnin1-M4bWxzmD48QHaEo?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 5
+  "https://tse1.mm.bing.net/th/id/OIP.2A-hNOpepgRDSFYSgvMrhQHaEo?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 6
+  "https://tse2.mm.bing.net/th/id/OIP.48YJdq77QO16XLjfgXaAGAHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 7
+  "https://tse1.mm.bing.net/th/id/OIP.YfarTF0Cc8rvotz_2VwJyQHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 8
+  "https://tse2.mm.bing.net/th/id/OIP._N_Ah3i-tlK26OWNR6Z2xAHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 9
+  "https://i.pinimg.com/originals/b8/98/76/b89876be8e3396e536d61219cf44e5b4.jpg",  // photo 10
+];
+
+// Fallback emojis shown when a photo slot is empty
+const FALLBACK_EMOJI = ["🌸","🌙","✦","🌷","⭐","🍀","🌺","💫","🎀","🌼"];
+
+// ═══════════════════════════════════════════════
+
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let tasks=JSON.parse(localStorage.getItem('yuki-tasks')||'[]');
+let editingId=null;
+tasks.forEach(t=>{if(!Number.isInteger(t.photoIndex))t.photoIndex=Math.floor(Math.random()*10);if(typeof t.completed!=='boolean')t.completed=false});
+localStorage.setItem('yuki-tasks',JSON.stringify(tasks));
+
+function saveTasks(){localStorage.setItem('yuki-tasks',JSON.stringify(tasks))}
+function formatTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return`${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`}
+function getTodayName(){return DAYS[new Date().getDay()]}
+function isTaskToday(t){return t.days.includes(getTodayName())||t.days.includes('Once')}
+
+function getPhotoHTML(index){
+  const slot = index % 10;
+  const url  = PHOTOS[slot];
+  if(url && url.trim()!==''){
+    return`<img src="${url}" alt="task photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+           <div class="photo-fallback" style="display:none">${FALLBACK_EMOJI[slot]}</div>`;
+  }
+  return`<div class="photo-fallback">${FALLBACK_EMOJI[slot]}</div>`;
+}
+
+function updateHeader(){
+  const now=new Date();
+  document.getElementById('date-line').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const today=getTodayName();
+  const n=tasks.filter(t=>isTaskToday(t)&&!t.completed).length;
+  document.getElementById('today-count').textContent=n===0?'nothing today — rest up! ✦':`${n} task${n>1?'s':''} coming up ✦`;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function renderTasks(){
+  const list=document.getElementById('task-list');
+  if(!tasks.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">🌙</div><p>no reminders yet~<br>tap below to add your first one ✦</p></div>`;
+    updateHeader();return;
+  }
+  const today=getTodayName();
+  const sorted=[...tasks].sort((a,b)=>a.time.localeCompare(b.time));
+  list.innerHTML=sorted.map((t,i)=>{
+    const isT=isTaskToday(t);
+    const photoIdx=t.photoIndex;
+    return`<div class="task-card${isT?' today-card':''}${t.completed?' completed':''}">
+      <div class="task-photo">
+        ${getPhotoHTML(photoIdx)}
+      </div>
+      <div class="task-body">
+        <div>
+          <div class="task-top">
+            <span class="task-name">${isT?'✦ ':''}${escHtml(t.name)}</span>
+            <span class="task-time-badge">${formatTime(t.time)}</span>
+          </div>
+          <div class="task-days">${t.days.map(d=>`<span class="day-pill">${d}</span>`).join('')}</div>
+          <div class="task-meta">🔔 ${t.notifMins} min before</div>
+        </div>
+        <div class="task-actions">
+          <button class="btn-sm btn-done" onclick="toggleDone('${t.id}')">${t.completed?'↩ undo':'✓ done'}</button>
+          <button class="btn-sm btn-edit" onclick="editTask('${t.id}')">✏️ edit</button>
+          <button class="btn-sm btn-delete" onclick="deleteTask('${t.id}')">🗑 delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updateHeader();
+}
+
+async function requestNotif(){
+  if(!('Notification'in window))return'unsupported';
+  if(Notification.permission==='granted')return'granted';
+  return await Notification.requestPermission();
+}
+
+let notificationAudioContext=null;
+function prepareNotificationSound(){
+  if(!notificationAudioContext){
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    if(AudioContext)notificationAudioContext=new AudioContext();
+  }
+  if(notificationAudioContext?.state==='suspended')notificationAudioContext.resume();
+}
+function playNotificationSound(){
+  prepareNotificationSound();
+  if(!notificationAudioContext)return;
+  const now=notificationAudioContext.currentTime;
+  [880,1175].forEach((frequency,i)=>{
+    const oscillator=notificationAudioContext.createOscillator();
+    const gain=notificationAudioContext.createGain();
+    oscillator.frequency.value=frequency;
+    oscillator.type='sine';
+    gain.gain.setValueAtTime(0.0001,now+i*0.18);
+    gain.gain.exponentialRampToValueAtTime(0.3,now+i*0.18+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001,now+i*0.18+0.35);
+    oscillator.connect(gain).connect(notificationAudioContext.destination);
+    oscillator.start(now+i*0.18);
+    oscillator.stop(now+i*0.18+0.36);
+  });
+}
+
+function scheduleNotifs(){
+  if(!('Notification'in window)||Notification.permission!=='granted')return;
+  const today=getTodayName(),now=new Date();
+  tasks.forEach(t=>{
+    if(!isTaskToday(t)||t.completed)return;
+    const[h,m]=t.time.split(':');
+    const d=new Date();d.setHours(parseInt(h),parseInt(m),0,0);
+    const delay=d-now-t.notifMins*60000;
+    if(delay>0&&delay<86400000)setTimeout(()=>{playNotificationSound();new Notification(`✦ ${t.name}`,{body:`Starting in ${t.notifMins} min! (${formatTime(t.time)})`})},delay);
+  });
+}
+
+function openModal(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='new reminder ✦';
+  document.getElementById('task-name').value='';
+  document.getElementById('task-time').value='09:00';
+  document.getElementById('notif-mins').value='15';
+  document.querySelectorAll('.day-toggle').forEach(b=>b.classList.remove('active'));
+  document.getElementById('notif-status').className='notif-status';
+  document.getElementById('overlay').classList.add('open');
+}
+
+function editTask(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  editingId=id;
+  document.getElementById('modal-title').textContent='edit reminder ✦';
+  document.getElementById('task-name').value=t.name;
+  document.getElementById('task-time').value=t.time;
+  document.getElementById('notif-mins').value=t.notifMins;
+  document.querySelectorAll('.day-toggle').forEach(b=>b.classList.toggle('active',t.days.includes(b.dataset.day)));
+  document.getElementById('notif-status').className='notif-status';
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal(){document.getElementById('overlay').classList.remove('open')}
+function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal()}
+document.querySelectorAll('.day-toggle').forEach(b=>b.addEventListener('click',()=>{
+  const once=b.dataset.day==='Once';
+  if(once)document.querySelectorAll('.day-toggle').forEach(x=>x.classList.remove('active'));
+  else document.querySelector('.day-toggle[data-day="Once"]').classList.remove('active');
+  b.classList.toggle('active');
+}));
+
+async function saveTask(){
+  prepareNotificationSound();
+  const name=document.getElementById('task-name').value.trim();
+  const time=document.getElementById('task-time').value;
+  const notifMins=parseInt(document.getElementById('notif-mins').value);
+  const days=[...document.querySelectorAll('.day-toggle.active')].map(b=>b.dataset.day);
+  if(!name){alert('please add a task name ✦');return}
+  if(!days.length){alert('pick at least one day ✦');return}
+  const perm=await requestNotif();
+  const s=document.getElementById('notif-status');
+  if(perm==='granted'){s.textContent='🔔 notifications on! reminders set ✦';s.className='notif-status show ok'}
+  else{s.textContent='⚠️ notifications blocked — tasks saved but no pop-ups!';s.className='notif-status show warn'}
+  if(editingId){const i=tasks.findIndex(t=>t.id===editingId);if(i!==-1)tasks[i]={...tasks[i],name,time,days,notifMins}}
+  else tasks.push({id:Date.now().toString(),name,time,days,notifMins,completed:false,photoIndex:Math.floor(Math.random()*10)});
+  saveTasks();renderTasks();renderProgress();scheduleNotifs();
+  setTimeout(closeModal,900);
+}
+
+function deleteTask(id){
+  if(!confirm('delete this reminder? ✦'))return;
+  tasks=tasks.filter(t=>t.id!==id);saveTasks();renderTasks();renderProgress();
+}
+
+function toggleDone(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  t.completed=!t.completed;saveTasks();renderTasks();renderProgress();
+}
+
+function progressCard(t){
+  return`<div class="progress-card"><div class="progress-name">${escHtml(t.name)}</div><div class="progress-meta">${formatTime(t.time)} · ${t.days.join(', ')}</div></div>`;
+}
+
+function renderProgress(){
+  const pending=tasks.filter(t=>!t.completed).sort((a,b)=>a.time.localeCompare(b.time));
+  const done=tasks.filter(t=>t.completed).sort((a,b)=>a.time.localeCompare(b.time));
+  document.getElementById('pending-list').innerHTML=pending.length?pending.map(progressCard).join(''):'<div class="progress-empty">nothing pending ✦</div>';
+  document.getElementById('done-list').innerHTML=done.length?done.map(progressCard).join(''):'<div class="progress-empty">no completed tasks yet</div>';
+}
+
+function showPage(){
+  const progress=location.hash==='#progress';
+  document.querySelector('body > .app:not(.progress-page)').style.display=progress?'none':'block';
+  document.getElementById('progress-page').style.display=progress?'block':'none';
+  document.querySelector('.fab').style.display=progress?'none':'flex';
+  if(progress)renderProgress();
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',showPage);
+
+renderTasks();renderProgress();showPage();scheduleNotifs();
+</script>
+</body>
+</html>
