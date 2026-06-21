@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#4f60ee">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <title>✦ yuki's planner</title>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
 <style>
@@ -72,6 +74,9 @@ button,a,select{touch-action:manipulation}
 .btn-sm:hover{opacity:0.75}
 .task-card.completed{opacity:0.68}
 .task-card.completed .task-name{text-decoration:line-through}
+.task-card.overdue{border-color:#ef6b7b;background:#fff5f6}
+.overdue-label{color:#c52e45;font-weight:700}
+.btn-snooze{background:#fff0cf;color:#885c00}
 .page-link{display:block;margin:14px 14px 0;padding:12px 16px;text-align:center;border-radius:var(--r);background:white;border:1.5px solid var(--b2);color:#3a2896;text-decoration:none;font-size:13px;font-weight:700}
 .progress-page{display:none}
 .progress-card{background:white;border-radius:var(--r);border:1.5px solid var(--b2);padding:13px 15px;margin-bottom:9px}
@@ -115,6 +120,18 @@ select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:v
 /* ── Photo edit info box ── */
 .info-box{background:white;border:1.5px dashed var(--b2);border-radius:var(--rsm);padding:12px 14px;margin:14px 14px 0;font-size:12px;color:var(--ts);line-height:1.7;font-weight:600}
 .info-box strong{color:var(--td);font-weight:700}
+.tools{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 14px 0}
+.tool-btn{min-height:43px;border:1.5px solid var(--b2);border-radius:14px;background:white;color:#3a2896;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:700;cursor:pointer}
+.tool-btn.install{grid-column:1/-1;background:linear-gradient(135deg,#5c8ef5,#7c4de8);color:white;border:none;display:none}
+.date-field{display:none}
+.date-field.show{display:block}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#17204b;color:white;padding:10px 16px;border-radius:20px;font-size:12px;font-weight:700;z-index:200;opacity:0;pointer-events:none;transition:.2s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+body.dark{--b1:#27345f;--b2:#3e4d7c;--lav:#382e62;--td:#edf1ff;--ts:#aebce9;background:linear-gradient(180deg,#10172f,#1a1730,#10172f)}
+body.dark .today-strip,body.dark .task-card,body.dark .page-link,body.dark .progress-card,body.dark .tool-btn,body.dark .notif-row,body.dark input,body.dark .day-toggle,body.dark .modal,body.dark .btn-cancel{background:#1d2748;color:var(--td)}
+body.dark .task-card.today-card{background:linear-gradient(135deg,#202d55,#29234d)}
+body.dark .task-card.overdue{background:#41232e;border-color:#ef6b7b}
+body.dark .task-photo{filter:brightness(.78)}
 
 /* Mobile app layout */
 @media (max-width:480px){
@@ -125,6 +142,7 @@ select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:v
   .girl-wrap{margin-left:4px;margin-bottom:-20px}
   .girl-wrap>img{width:126px;height:178px;border-radius:63px 63px 0 0}
   .today-strip,.page-link{margin-left:12px;margin-right:12px}
+  .tools{margin-left:12px;margin-right:12px}
   .section{padding-left:12px;padding-right:12px}
   .task-photo{width:82px}
   .task-body{padding:12px 10px 10px}
@@ -139,6 +157,7 @@ select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:v
   .btn-save,.btn-cancel{min-height:52px}
   .progress-page .header{min-height:145px!important}
   .progress-page .header-content{min-height:145px}
+  .toast{max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
 }
 
 @media (max-width:360px){
@@ -245,6 +264,15 @@ select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:v
     </div>
   </div>
 
+  <div class="tools">
+    <button class="tool-btn" onclick="toggleTheme()" id="theme-btn">🌙 dark mode</button>
+    <button class="tool-btn" onclick="exportBackup()">⬇ backup</button>
+    <button class="tool-btn" onclick="document.getElementById('restore-file').click()">⬆ restore</button>
+    <button class="tool-btn" onclick="location.hash='#progress'">✓ progress</button>
+    <button class="tool-btn install" id="install-btn" onclick="installApp()">＋ install this app</button>
+    <input type="file" id="restore-file" accept="application/json,.json" hidden onchange="importBackup(event)">
+  </div>
+
   <div class="section">
     <div class="sec-title">all reminders</div>
     <div id="task-list"></div>
@@ -290,6 +318,10 @@ select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:v
         <button class="day-toggle" data-day="Once">Once</button>
       </div>
     </div>
+    <div class="field date-field" id="date-field">
+      <label>reminder date</label>
+      <input type="date" id="task-date">
+    </div>
     <div class="field">
       <div class="notif-row">
         <div>
@@ -310,93 +342,83 @@ select{font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;color:v
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
-// ═══════════════════════════════════════════════
-//  ✦ YOUR 10 PHOTOS — edit these URLs/paths ✦
-//  Use image URLs from the internet, OR
-//  local paths like: "photos/myphoto1.jpg"
-//  (put the images in same folder as this file)
-// ═══════════════════════════════════════════════
-const PHOTOS = [
-  "https://tse4.mm.bing.net/th/id/OIP.ASUHHaIBxnoLBXTF2bl5xgHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 1  ← paste your URL here
-  "https://tse3.mm.bing.net/th/id/OIP.lPWW2hNHR5BaK5iSAzZcHQHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 2
-  "https://img.ws.mms.shopee.com.my/b23d24f3e4886f1139cb163e3cc57500",  // photo 3
-  "https://tse1.explicit.bing.net/th/id/OIP.L51NRvOkqfV023_XPRxYmQAAAA?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 4
-  "https://tse2.mm.bing.net/th/id/OIP.hdjZVAnin1-M4bWxzmD48QHaEo?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 5
-  "https://tse1.mm.bing.net/th/id/OIP.2A-hNOpepgRDSFYSgvMrhQHaEo?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 6
-  "https://tse2.mm.bing.net/th/id/OIP.48YJdq77QO16XLjfgXaAGAHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 7
-  "https://tse1.mm.bing.net/th/id/OIP.YfarTF0Cc8rvotz_2VwJyQHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 8
-  "https://tse2.mm.bing.net/th/id/OIP._N_Ah3i-tlK26OWNR6Z2xAHaEK?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",  // photo 9
-  "https://i.pinimg.com/originals/b8/98/76/b89876be8e3396e536d61219cf44e5b4.jpg",  // photo 10
-];
-
-// Fallback emojis shown when a photo slot is empty
-const FALLBACK_EMOJI = ["🌸","🌙","✦","🌷","⭐","🍀","🌺","💫","🎀","🌼"];
-
-// ═══════════════════════════════════════════════
-
+const PHOTOS=Array.from({length:10},(_,i)=>`assets/photo-${i+1}.svg`);
+const FALLBACK_EMOJI=['🌸','🌙','✦','🌷','⭐','🍀','🌺','💫','🎀','🌼'];
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-let tasks=JSON.parse(localStorage.getItem('yuki-tasks')||'[]');
+const STORAGE_KEY='yuki-tasks';
+let tasks=[];
 let editingId=null;
-tasks.forEach(t=>{if(!Number.isInteger(t.photoIndex))t.photoIndex=Math.floor(Math.random()*10);if(typeof t.completed!=='boolean')t.completed=false});
-localStorage.setItem('yuki-tasks',JSON.stringify(tasks));
+let notificationAudioContext=null;
+let notificationTimers=[];
+let deferredInstallPrompt=null;
 
-function saveTasks(){localStorage.setItem('yuki-tasks',JSON.stringify(tasks))}
+try{tasks=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch{tasks=[]}
+const todayISO=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+tasks.forEach(t=>{
+  if(!Array.isArray(t.days))t.days=[];
+  if(!Number.isInteger(t.photoIndex))t.photoIndex=Math.floor(Math.random()*10);
+  if(typeof t.completed!=='boolean')t.completed=false;
+  if(t.days.includes('Once')&&!t.date)t.date=todayISO();
+  if(!('snoozeUntil'in t))t.snoozeUntil=null;
+});
+saveTasks();
+
+function saveTasks(){localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks))}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function formatTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return`${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`}
+function formatDate(date){if(!date)return'';return new Date(`${date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
 function getTodayName(){return DAYS[new Date().getDay()]}
-function isTaskToday(t){return t.days.includes(getTodayName())||t.days.includes('Once')}
+function isOnce(t){return t.days.includes('Once')}
+function isTaskToday(t){return isOnce(t)?t.date===todayISO():t.days.includes(getTodayName())}
+function dueDate(t){
+  if(t.snoozeUntil&&new Date(t.snoozeUntil)>new Date())return new Date(t.snoozeUntil);
+  const date=isOnce(t)?(t.date||todayISO()):todayISO();
+  return new Date(`${date}T${t.time}:00`);
+}
+function isOverdue(t){
+  if(t.completed)return false;
+  if(isOnce(t))return dueDate(t)<new Date();
+  return isTaskToday(t)&&dueDate(t)<new Date();
+}
+function scheduleLabel(t){return isOnce(t)?`Once · ${formatDate(t.date)}`:t.days.join(', ')}
+function showToast(message){
+  const toast=document.getElementById('toast');toast.textContent=message;toast.classList.add('show');
+  clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),2400);
+}
 
 function getPhotoHTML(index){
-  const slot = index % 10;
-  const url  = PHOTOS[slot];
-  if(url && url.trim()!==''){
-    return`<img src="${url}" alt="task photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-           <div class="photo-fallback" style="display:none">${FALLBACK_EMOJI[slot]}</div>`;
-  }
-  return`<div class="photo-fallback">${FALLBACK_EMOJI[slot]}</div>`;
+  const slot=((index%10)+10)%10;
+  return`<img src="${PHOTOS[slot]}" alt="task illustration"><div class="photo-fallback" style="display:none">${FALLBACK_EMOJI[slot]}</div>`;
 }
 
 function updateHeader(){
   const now=new Date();
   document.getElementById('date-line').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  const today=getTodayName();
   const n=tasks.filter(t=>isTaskToday(t)&&!t.completed).length;
   document.getElementById('today-count').textContent=n===0?'nothing today — rest up! ✦':`${n} task${n>1?'s':''} coming up ✦`;
 }
 
-function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-
 function renderTasks(){
   const list=document.getElementById('task-list');
-  if(!tasks.length){
-    list.innerHTML=`<div class="empty"><div class="empty-icon">🌙</div><p>no reminders yet~<br>tap below to add your first one ✦</p></div>`;
-    updateHeader();return;
-  }
-  const today=getTodayName();
-  const sorted=[...tasks].sort((a,b)=>a.time.localeCompare(b.time));
-  list.innerHTML=sorted.map((t,i)=>{
-    const isT=isTaskToday(t);
-    const photoIdx=t.photoIndex;
-    return`<div class="task-card${isT?' today-card':''}${t.completed?' completed':''}">
-      <div class="task-photo">
-        ${getPhotoHTML(photoIdx)}
-      </div>
-      <div class="task-body">
-        <div>
-          <div class="task-top">
-            <span class="task-name">${isT?'✦ ':''}${escHtml(t.name)}</span>
-            <span class="task-time-badge">${formatTime(t.time)}</span>
-          </div>
-          <div class="task-days">${t.days.map(d=>`<span class="day-pill">${d}</span>`).join('')}</div>
-          <div class="task-meta">🔔 ${t.notifMins} min before</div>
-        </div>
-        <div class="task-actions">
-          <button class="btn-sm btn-done" onclick="toggleDone('${t.id}')">${t.completed?'↩ undo':'✓ done'}</button>
-          <button class="btn-sm btn-edit" onclick="editTask('${t.id}')">✏️ edit</button>
-          <button class="btn-sm btn-delete" onclick="deleteTask('${t.id}')">🗑 delete</button>
-        </div>
-      </div>
-    </div>`;
+  if(!tasks.length){list.innerHTML='<div class="empty"><div class="empty-icon">🌙</div><p>no reminders yet~<br>tap below to add your first one ✦</p></div>';updateHeader();return}
+  const sorted=[...tasks].sort((a,b)=>Number(a.completed)-Number(b.completed)||dueDate(a)-dueDate(b));
+  list.innerHTML=sorted.map(t=>{
+    const today=isTaskToday(t),overdue=isOverdue(t);
+    const meta=t.snoozeUntil&&new Date(t.snoozeUntil)>new Date()?`⏰ snoozed until ${new Date(t.snoozeUntil).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:`🔔 ${t.notifMins} min before`;
+    return`<div class="task-card${today?' today-card':''}${t.completed?' completed':''}${overdue?' overdue':''}">
+      <div class="task-photo">${getPhotoHTML(t.photoIndex)}</div>
+      <div class="task-body"><div><div class="task-top"><span class="task-name">${today?'✦ ':''}${escHtml(t.name)}</span><span class="task-time-badge">${formatTime(t.time)}</span></div>
+      <div class="task-days"><span class="day-pill">${escHtml(scheduleLabel(t))}</span></div>
+      <div class="task-meta${overdue?' overdue-label':''}">${overdue?'⚠ overdue · ':''}${meta}</div></div>
+      <div class="task-actions">
+        <button class="btn-sm btn-done" onclick="toggleDone('${t.id}')">${t.completed?'↩ undo':'✓ done'}</button>
+        ${!t.completed?`<button class="btn-sm btn-snooze" onclick="snoozeTask('${t.id}',10)">⏰ +10m</button>`:''}
+        <button class="btn-sm btn-edit" onclick="editTask('${t.id}')">✏ edit</button>
+        <button class="btn-sm btn-delete" onclick="deleteTask('${t.id}')">🗑 delete</button>
+      </div></div></div>`;
   }).join('');
   updateHeader();
 }
@@ -404,129 +426,85 @@ function renderTasks(){
 async function requestNotif(){
   if(!('Notification'in window))return'unsupported';
   if(Notification.permission==='granted')return'granted';
-  return await Notification.requestPermission();
+  return Notification.requestPermission();
 }
-
-let notificationAudioContext=null;
 function prepareNotificationSound(){
-  if(!notificationAudioContext){
-    const AudioContext=window.AudioContext||window.webkitAudioContext;
-    if(AudioContext)notificationAudioContext=new AudioContext();
-  }
+  if(!notificationAudioContext){const AudioContext=window.AudioContext||window.webkitAudioContext;if(AudioContext)notificationAudioContext=new AudioContext()}
   if(notificationAudioContext?.state==='suspended')notificationAudioContext.resume();
 }
 function playNotificationSound(){
-  prepareNotificationSound();
-  if(!notificationAudioContext)return;
+  prepareNotificationSound();if(!notificationAudioContext)return;
   const now=notificationAudioContext.currentTime;
-  [880,1175].forEach((frequency,i)=>{
-    const oscillator=notificationAudioContext.createOscillator();
-    const gain=notificationAudioContext.createGain();
-    oscillator.frequency.value=frequency;
-    oscillator.type='sine';
-    gain.gain.setValueAtTime(0.0001,now+i*0.18);
-    gain.gain.exponentialRampToValueAtTime(0.3,now+i*0.18+0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001,now+i*0.18+0.35);
-    oscillator.connect(gain).connect(notificationAudioContext.destination);
-    oscillator.start(now+i*0.18);
-    oscillator.stop(now+i*0.18+0.36);
-  });
+  [880,1175].forEach((frequency,i)=>{const oscillator=notificationAudioContext.createOscillator(),gain=notificationAudioContext.createGain();oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,now+i*.18);gain.gain.exponentialRampToValueAtTime(.3,now+i*.18+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+i*.18+.35);oscillator.connect(gain).connect(notificationAudioContext.destination);oscillator.start(now+i*.18);oscillator.stop(now+i*.18+.36)});
 }
-
+function fireNotification(t,snoozed=false){
+  playNotificationSound();
+  new Notification(`✦ ${t.name}`,{body:snoozed?'Your snoozed reminder is ready.':`Starting in ${t.notifMins} min! (${formatTime(t.time)})`,icon:'assets/icon-192.png'});
+  if(snoozed){t.snoozeUntil=null;saveTasks();renderTasks()}
+}
 function scheduleNotifs(){
+  notificationTimers.forEach(clearTimeout);notificationTimers=[];
   if(!('Notification'in window)||Notification.permission!=='granted')return;
-  const today=getTodayName(),now=new Date();
+  const now=Date.now();
   tasks.forEach(t=>{
-    if(!isTaskToday(t)||t.completed)return;
-    const[h,m]=t.time.split(':');
-    const d=new Date();d.setHours(parseInt(h),parseInt(m),0,0);
-    const delay=d-now-t.notifMins*60000;
-    if(delay>0&&delay<86400000)setTimeout(()=>{playNotificationSound();new Notification(`✦ ${t.name}`,{body:`Starting in ${t.notifMins} min! (${formatTime(t.time)})`})},delay);
+    if(t.completed)return;
+    const snoozed=t.snoozeUntil&&new Date(t.snoozeUntil).getTime()>now;
+    if(!snoozed&&!isTaskToday(t))return;
+    const alertAt=snoozed?new Date(t.snoozeUntil).getTime():dueDate(t).getTime()-t.notifMins*60000;
+    const delay=alertAt-now;
+    if(delay>0&&delay<86400000)notificationTimers.push(setTimeout(()=>fireNotification(t,snoozed),delay));
   });
 }
 
+function setDateField(){
+  const once=document.querySelector('.day-toggle[data-day="Once"]').classList.contains('active');
+  document.getElementById('date-field').classList.toggle('show',once);
+}
 function openModal(){
-  editingId=null;
-  document.getElementById('modal-title').textContent='new reminder ✦';
-  document.getElementById('task-name').value='';
-  document.getElementById('task-time').value='09:00';
-  document.getElementById('notif-mins').value='15';
-  document.querySelectorAll('.day-toggle').forEach(b=>b.classList.remove('active'));
-  document.getElementById('notif-status').className='notif-status';
-  document.getElementById('overlay').classList.add('open');
+  editingId=null;document.getElementById('modal-title').textContent='new reminder ✦';document.getElementById('task-name').value='';document.getElementById('task-time').value='09:00';document.getElementById('task-date').value=todayISO();document.getElementById('task-date').min=todayISO();document.getElementById('notif-mins').value='15';document.querySelectorAll('.day-toggle').forEach(b=>b.classList.remove('active'));document.getElementById('date-field').classList.remove('show');document.getElementById('notif-status').className='notif-status';document.getElementById('overlay').classList.add('open');
 }
-
 function editTask(id){
-  const t=tasks.find(x=>x.id===id);if(!t)return;
-  editingId=id;
-  document.getElementById('modal-title').textContent='edit reminder ✦';
-  document.getElementById('task-name').value=t.name;
-  document.getElementById('task-time').value=t.time;
-  document.getElementById('notif-mins').value=t.notifMins;
-  document.querySelectorAll('.day-toggle').forEach(b=>b.classList.toggle('active',t.days.includes(b.dataset.day)));
-  document.getElementById('notif-status').className='notif-status';
-  document.getElementById('overlay').classList.add('open');
+  const t=tasks.find(x=>x.id===id);if(!t)return;editingId=id;document.getElementById('modal-title').textContent='edit reminder ✦';document.getElementById('task-name').value=t.name;document.getElementById('task-time').value=t.time;document.getElementById('task-date').value=t.date||todayISO();document.getElementById('task-date').min=todayISO();document.getElementById('notif-mins').value=t.notifMins;document.querySelectorAll('.day-toggle').forEach(b=>b.classList.toggle('active',t.days.includes(b.dataset.day)));setDateField();document.getElementById('notif-status').className='notif-status';document.getElementById('overlay').classList.add('open');
 }
-
 function closeModal(){document.getElementById('overlay').classList.remove('open')}
 function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal()}
-document.querySelectorAll('.day-toggle').forEach(b=>b.addEventListener('click',()=>{
-  const once=b.dataset.day==='Once';
-  if(once)document.querySelectorAll('.day-toggle').forEach(x=>x.classList.remove('active'));
-  else document.querySelector('.day-toggle[data-day="Once"]').classList.remove('active');
-  b.classList.toggle('active');
-}));
+document.querySelectorAll('.day-toggle').forEach(b=>b.addEventListener('click',()=>{const once=b.dataset.day==='Once';if(once)document.querySelectorAll('.day-toggle').forEach(x=>x.classList.remove('active'));else document.querySelector('.day-toggle[data-day="Once"]').classList.remove('active');b.classList.toggle('active');setDateField()}));
 
 async function saveTask(){
   prepareNotificationSound();
-  const name=document.getElementById('task-name').value.trim();
-  const time=document.getElementById('task-time').value;
-  const notifMins=parseInt(document.getElementById('notif-mins').value);
-  const days=[...document.querySelectorAll('.day-toggle.active')].map(b=>b.dataset.day);
+  const name=document.getElementById('task-name').value.trim(),time=document.getElementById('task-time').value,date=document.getElementById('task-date').value,notifMins=parseInt(document.getElementById('notif-mins').value),days=[...document.querySelectorAll('.day-toggle.active')].map(b=>b.dataset.day);
   if(!name){alert('please add a task name ✦');return}
   if(!days.length){alert('pick at least one day ✦');return}
-  const perm=await requestNotif();
-  const s=document.getElementById('notif-status');
-  if(perm==='granted'){s.textContent='🔔 notifications on! reminders set ✦';s.className='notif-status show ok'}
-  else{s.textContent='⚠️ notifications blocked — tasks saved but no pop-ups!';s.className='notif-status show warn'}
-  if(editingId){const i=tasks.findIndex(t=>t.id===editingId);if(i!==-1)tasks[i]={...tasks[i],name,time,days,notifMins}}
-  else tasks.push({id:Date.now().toString(),name,time,days,notifMins,completed:false,photoIndex:Math.floor(Math.random()*10)});
-  saveTasks();renderTasks();renderProgress();scheduleNotifs();
-  setTimeout(closeModal,900);
+  if(days.includes('Once')&&!date){alert('pick a date for this reminder ✦');return}
+  const perm=await requestNotif(),status=document.getElementById('notif-status');
+  if(perm==='granted'){status.textContent='🔔 notifications on! reminder saved ✦';status.className='notif-status show ok'}else{status.textContent='tasks saved — allow notifications for pop-ups';status.className='notif-status show warn'}
+  if(editingId){const i=tasks.findIndex(t=>t.id===editingId);if(i!==-1)tasks[i]={...tasks[i],name,time,date:days.includes('Once')?date:null,days,notifMins,snoozeUntil:null}}
+  else tasks.push({id:Date.now().toString(),name,time,date:days.includes('Once')?date:null,days,notifMins,completed:false,completedAt:null,snoozeUntil:null,photoIndex:Math.floor(Math.random()*10)});
+  saveTasks();renderTasks();renderProgress();scheduleNotifs();setTimeout(closeModal,700);
 }
+function deleteTask(id){if(!confirm('delete this reminder? ✦'))return;tasks=tasks.filter(t=>t.id!==id);saveTasks();refreshAll()}
+function toggleDone(id){const t=tasks.find(x=>x.id===id);if(!t)return;t.completed=!t.completed;t.completedAt=t.completed?new Date().toISOString():null;t.snoozeUntil=null;saveTasks();refreshAll();showToast(t.completed?'task completed ✦':'task moved back to pending')}
+function snoozeTask(id,minutes){const t=tasks.find(x=>x.id===id);if(!t)return;t.snoozeUntil=new Date(Date.now()+minutes*60000).toISOString();saveTasks();refreshAll();scheduleNotifs();showToast(`snoozed for ${minutes} minutes`) }
 
-function deleteTask(id){
-  if(!confirm('delete this reminder? ✦'))return;
-  tasks=tasks.filter(t=>t.id!==id);saveTasks();renderTasks();renderProgress();
-}
+function progressCard(t){const overdue=isOverdue(t);return`<div class="progress-card"><div class="progress-name">${escHtml(t.name)}</div><div class="progress-meta${overdue?' overdue-label':''}">${overdue?'⚠ overdue · ':''}${formatTime(t.time)} · ${escHtml(scheduleLabel(t))}</div></div>`}
+function renderProgress(){const pending=tasks.filter(t=>!t.completed).sort((a,b)=>dueDate(a)-dueDate(b)),done=tasks.filter(t=>t.completed).sort((a,b)=>String(b.completedAt).localeCompare(String(a.completedAt)));document.getElementById('pending-list').innerHTML=pending.length?pending.map(progressCard).join(''):'<div class="progress-empty">nothing pending ✦</div>';document.getElementById('done-list').innerHTML=done.length?done.map(progressCard).join(''):'<div class="progress-empty">no completed tasks yet</div>'}
+function refreshAll(){renderTasks();renderProgress();scheduleNotifs()}
 
-function toggleDone(id){
-  const t=tasks.find(x=>x.id===id);if(!t)return;
-  t.completed=!t.completed;saveTasks();renderTasks();renderProgress();
-}
+function toggleTheme(){const dark=!document.body.classList.contains('dark');document.body.classList.toggle('dark',dark);localStorage.setItem('yuki-theme',dark?'dark':'light');updateThemeButton()}
+function updateThemeButton(){document.getElementById('theme-btn').textContent=document.body.classList.contains('dark')?'☀ light mode':'🌙 dark mode'}
+if(localStorage.getItem('yuki-theme')==='dark'||(!localStorage.getItem('yuki-theme')&&matchMedia('(prefers-color-scheme:dark)').matches))document.body.classList.add('dark');
 
-function progressCard(t){
-  return`<div class="progress-card"><div class="progress-name">${escHtml(t.name)}</div><div class="progress-meta">${formatTime(t.time)} · ${t.days.join(', ')}</div></div>`;
-}
+function exportBackup(){const payload={app:'Yuki Planner',version:2,exportedAt:new Date().toISOString(),tasks};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`yuki-planner-backup-${todayISO()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);showToast('backup downloaded')}
+function importBackup(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result),incoming=Array.isArray(data)?data:data.tasks;if(!Array.isArray(incoming))throw new Error();if(!confirm(`restore ${incoming.length} tasks? This replaces the current list.`))return;tasks=incoming;tasks.forEach(t=>{if(!Number.isInteger(t.photoIndex))t.photoIndex=Math.floor(Math.random()*10);if(typeof t.completed!=='boolean')t.completed=false});saveTasks();refreshAll();showToast('backup restored')}catch{alert('this backup file is not valid')}finally{event.target.value=''}};reader.readAsText(file)}
 
-function renderProgress(){
-  const pending=tasks.filter(t=>!t.completed).sort((a,b)=>a.time.localeCompare(b.time));
-  const done=tasks.filter(t=>t.completed).sort((a,b)=>a.time.localeCompare(b.time));
-  document.getElementById('pending-list').innerHTML=pending.length?pending.map(progressCard).join(''):'<div class="progress-empty">nothing pending ✦</div>';
-  document.getElementById('done-list').innerHTML=done.length?done.map(progressCard).join(''):'<div class="progress-empty">no completed tasks yet</div>';
-}
-
-function showPage(){
-  const progress=location.hash==='#progress';
-  document.querySelector('body > .app:not(.progress-page)').style.display=progress?'none':'block';
-  document.getElementById('progress-page').style.display=progress?'block':'none';
-  document.querySelector('.fab').style.display=progress?'none':'flex';
-  if(progress)renderProgress();
-  window.scrollTo(0,0);
-}
+function showPage(){const progress=location.hash==='#progress';document.querySelector('body > .app:not(.progress-page)').style.display=progress?'none':'block';document.getElementById('progress-page').style.display=progress?'block':'none';document.querySelector('.fab').style.display=progress?'none':'flex';if(progress)renderProgress();window.scrollTo(0,0)}
 window.addEventListener('hashchange',showPage);
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;document.getElementById('install-btn').style.display='block'});
+async function installApp(){if(!deferredInstallPrompt){showToast('open the hosted HTTPS link to install');return}deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;document.getElementById('install-btn').style.display='none'}
+window.addEventListener('appinstalled',()=>showToast('Yuki Planner installed ✦'));
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js');
 
-renderTasks();renderProgress();showPage();scheduleNotifs();
+updateThemeButton();refreshAll();showPage();setInterval(()=>{renderTasks();renderProgress();scheduleNotifs()},60000);
 </script>
 </body>
 </html>
